@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amazon CPC 一括調整ツール</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Meiryo', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+  background: #eef2f7;
+  color: #333;
+  min-height: 100vh;
+  padding: 20px;
+  font-size: 14px;
+}
+.container { max-width: 860px; margin: 0 auto; }
+h1 { text-align: center; color: #1a3a5c; font-size: 22px; margin-bottom: 4px; }
+.subtitle { text-align: center; color: #777; margin-bottom: 22px; font-size: 13px; }
+
+.card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px 22px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.08);
+}
+.step-header {
+  font-weight: bold; color: #1a3a5c; font-size: 15px;
+  margin-bottom: 14px; display: flex; align-items: center; gap: 10px;
+}
+.step-badge {
+  background: #1a3a5c; color: #fff; border-radius: 50%;
+  width: 28px; height: 28px; display: flex; align-items: center;
+  justify-content: center; font-size: 13px; font-weight: bold; flex-shrink: 0;
+}
+.step-badge.gray { background: #888; }
+
+/* Two-column file upload layout */
+.file-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 600px) { .file-row { grid-template-columns: 1fr; } }
+
+.file-panel {
+  border: 1px solid #d0dce8;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.file-panel-header {
+  padding: 8px 12px;
+  font-weight: bold;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.file-panel-header.blue { background: #dbeafe; color: #1e40af; }
+.file-panel-header.green { background: #d1fae5; color: #065f46; }
+.file-panel-body { padding: 12px; }
+
+.drop-zone {
+  border: 2px dashed #a0b4cc; border-radius: 5px;
+  padding: 18px 10px; text-align: center; cursor: pointer;
+  transition: all 0.2s; background: #f7fafc;
+  font-size: 12px;
+}
+.drop-zone:hover, .drop-zone.drag-over { border-color: #1a3a5c; background: #eaf1f8; }
+.drop-zone-icon { font-size: 26px; margin-bottom: 5px; }
+.drop-zone-text { color: #666; line-height: 1.5; }
+.drop-zone-text strong { color: #1a3a5c; }
+
+.info-mini {
+  margin-top: 10px;
+  background: #f0f7ff;
+  border: 1px solid #bcd4ed;
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.info-mini .ok { color: #1e40af; font-weight: bold; margin-bottom: 4px; }
+.info-mini .ok.green-ok { color: #065f46; }
+.info-mini table { width: 100%; }
+.info-mini td { padding: 1px 0; }
+.info-mini td:first-child { color: #666; width: 110px; }
+.info-mini td:last-child { font-weight: bold; font-family: monospace; color: #333; }
+.err-mini {
+  margin-top: 8px; background: #fff5f5; border: 1px solid #fc8181;
+  border-radius: 4px; padding: 8px 10px; color: #c53030; font-size: 12px;
+  white-space: pre-wrap;
+}
+
+label { display: block; font-size: 13px; color: #555; margin-bottom: 5px; font-weight: bold; }
+.note { font-size: 12px; color: #888; margin-top: 5px; line-height: 1.5; }
+textarea {
+  width: 100%; padding: 8px 10px;
+  border: 1px solid #ccc; border-radius: 4px;
+  font-family: 'Meiryo', monospace; font-size: 13px;
+  resize: vertical; line-height: 1.5;
+}
+textarea:focus { outline: none; border-color: #1a3a5c; box-shadow: 0 0 0 2px rgba(26,58,92,0.15); }
+input[type="text"] {
+  width: 100%; padding: 8px 10px;
+  border: 1px solid #ccc; border-radius: 4px;
+  font-size: 13px; font-family: 'Meiryo', monospace;
+}
+input[type="text"]:focus { outline: none; border-color: #1a3a5c; }
+
+.divider { border: none; border-top: 1px solid #eee; margin: 14px 0; }
+
+.btn {
+  padding: 10px 24px; border: none; border-radius: 5px;
+  font-size: 14px; font-weight: bold; cursor: pointer;
+  transition: opacity 0.15s; font-family: inherit;
+}
+.btn:hover:not(:disabled) { opacity: 0.85; }
+.btn:disabled { opacity: 0.38; cursor: not-allowed; }
+.btn-primary { background: #1a3a5c; color: #fff; }
+.btn-blue { background: #1e40af; color: #fff; }
+.btn-green { background: #065f46; color: #fff; }
+.btn-block { width: 100%; padding: 12px; font-size: 15px; margin-top: 10px; }
+
+.result-box {
+  background: #f0fff4; border: 1px solid #9ae6b4;
+  border-radius: 5px; padding: 14px 16px; margin-top: 14px;
+}
+.result-title { font-weight: bold; color: #276749; margin-bottom: 10px; font-size: 14px; }
+.result-row {
+  display: flex; justify-content: space-between;
+  padding: 4px 0; font-size: 13px; border-bottom: 1px solid #c6f6d5;
+}
+.result-row:last-child { border-bottom: none; }
+.result-row.total {
+  border-top: 1px solid #68d391; margin-top: 6px; padding-top: 8px; font-weight: bold;
+}
+.result-count { font-weight: bold; color: #276749; font-size: 15px; }
+
+.dl-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+@media (max-width: 600px) { .dl-row { grid-template-columns: 1fr; } }
+
+.error-box {
+  background: #fff5f5; border: 1px solid #fc8181;
+  border-radius: 5px; padding: 12px 14px; margin-top: 12px;
+  color: #c53030; font-size: 13px; white-space: pre-wrap;
+}
+.hidden { display: none !important; }
+
+.toggle-header { cursor: pointer; user-select: none; }
+.toggle-arrow { margin-left: auto; font-size: 12px; font-weight: normal; color: #888; }
+.logic-table {
+  width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 12px;
+}
+.logic-table th { background: #e8eef5; padding: 5px 10px; text-align: left; font-weight: bold; color: #1a3a5c; }
+.logic-table td { padding: 4px 10px; border-bottom: 1px solid #f0f4f8; }
+.logic-table tr:nth-child(even) td { background: #f7fafc; }
+.logic-subtitle { font-weight: bold; font-size: 13px; margin: 10px 0 6px; color: #1a3a5c; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>Amazon CPC 一括調整ツール</h1>
+  <p class="subtitle">スポンサープロダクト広告バルクシートのCPCを自動計算・更新します</p>
+
+  <!-- Step 1: Two file uploads -->
+  <div class="card">
+    <div class="step-header">
+      <span class="step-badge">1</span>
+      Excel バルクシートを2つ選択
+    </div>
+
+    <div class="file-row">
+      <!-- File A: 1-week -->
+      <div class="file-panel">
+        <div class="file-panel-header blue">
+          📅 ファイルA：1週間データ
+        </div>
+        <div class="file-panel-body">
+          <div style="font-size:12px; color:#555; margin-bottom:8px;">
+            広告測定期間：過去1週間<br>
+            <span style="color:#1e40af; font-weight:bold;">→ パターン1（7〜13日）で使用</span>
+          </div>
+          <div class="drop-zone" id="drop-a" onclick="document.getElementById('file-a').click()">
+            <div class="drop-zone-icon">📂</div>
+            <div class="drop-zone-text">
+              <strong>クリック or ドロップ</strong>
+            </div>
+          </div>
+          <input type="file" id="file-a" accept=".xlsx,.xls" style="display:none">
+          <div id="info-a" class="info-mini hidden">
+            <div class="ok" id="ok-a">✅ 読み込み完了</div>
+            <table>
+              <tr><td>ファイル名:</td><td id="ia-name">-</td></tr>
+              <tr><td>行数:</td><td id="ia-rows">-</td></tr>
+              <tr><td>ACOS列:</td><td id="ia-acos">-</td></tr>
+              <tr><td>CPC列:</td><td id="ia-cpc">-</td></tr>
+              <tr><td>クリック数列:</td><td id="ia-clicks">-</td></tr>
+              <tr><td>入札額列:</td><td id="ia-bid">-</td></tr>
+            </table>
+          </div>
+          <div id="err-a" class="err-mini hidden"></div>
+        </div>
+      </div>
+
+      <!-- File B: 2-week -->
+      <div class="file-panel">
+        <div class="file-panel-header green">
+          📅 ファイルB：2週間データ
+        </div>
+        <div class="file-panel-body">
+          <div style="font-size:12px; color:#555; margin-bottom:8px;">
+            広告測定期間：過去2週間<br>
+            <span style="color:#065f46; font-weight:bold;">→ パターン2（14日以上）で使用</span>
+          </div>
+          <div class="drop-zone" id="drop-b" onclick="document.getElementById('file-b').click()">
+            <div class="drop-zone-icon">📂</div>
+            <div class="drop-zone-text">
+              <strong>クリック or ドロップ</strong>
+            </div>
+          </div>
+          <input type="file" id="file-b" accept=".xlsx,.xls" style="display:none">
+          <div id="info-b" class="info-mini hidden">
+            <div class="ok green-ok" id="ok-b">✅ 読み込み完了</div>
+            <table>
+              <tr><td>ファイル名:</td><td id="ib-name">-</td></tr>
+              <tr><td>行数:</td><td id="ib-rows">-</td></tr>
+              <tr><td>ACOS列:</td><td id="ib-acos">-</td></tr>
+              <tr><td>CPC列:</td><td id="ib-cpc">-</td></tr>
+              <tr><td>クリック数列:</td><td id="ib-clicks">-</td></tr>
+              <tr><td>入札額列:</td><td id="ib-bid">-</td></tr>
+            </table>
+          </div>
+          <div id="err-b" class="err-mini hidden"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: 7-13日 -->
+  <div class="card">
+    <div class="step-header">
+      <span class="step-badge">2</span>
+      パターン1：7日以上13日以内の対象商品
+    </div>
+    <label for="targets7to13">対象商品（1行1件、L列「キャンペーン名（情報提供のみ）」の値と完全一致）</label>
+    <textarea id="targets7to13" rows="5" placeholder="例:&#10;A_B0GZ2RX85Y_汗取りシート襟&#10;A_B0XXXXX_商品名"></textarea>
+    <p class="note">
+      ※ 空欄の場合はパターン1の処理をスキップします（ファイルAのダウンロードも不要）<br>
+      ※ AB列（入札額）が空白の行はスキップされます<br>
+      ※ ここに入力した商品は、パターン2の除外対象に自動追加されます
+    </p>
+  </div>
+
+  <!-- Step 3: 14日以上 -->
+  <div class="card">
+    <div class="step-header">
+      <span class="step-badge">3</span>
+      パターン2：14日以上経過の商品　除外設定
+    </div>
+
+    <label for="fixed-exclude">固定除外リスト（L列に含む文字列、1行1件、部分一致）</label>
+    <textarea id="fixed-exclude" rows="12">nursePouch
+A_B0GZ2RX85Y_汗取りシート襟
+A_B0GZ2MJ8MN_名刺ホルダー300枚
+A_B0GZ2ZRHT2_ラッピングペーパー
+A_B0GZ7VJY24_脇汗パッド
+A_B0H174L4VW_ヘアアクセサリー
+A_B0H17DPRYP_ステンレスクリップ
+A_B0H17MDG1Z_ゴム手袋
+A_B0H17MD8K1_壁紙シール
+A_B0H1M74CQB_ジムバッグ洗える</textarea>
+    <p class="note">※ 編集・追加可能です。L列の値にこの文字列が含まれていれば除外（部分一致）</p>
+
+    <hr class="divider">
+
+    <label for="exclude-ranges">除外行範囲（Excel行番号、カンマ区切り）</label>
+    <input type="text" id="exclude-ranges" placeholder="例: 1584-1643, 200-250">
+    <p class="note">※ ヘッダーが1行目、データは2行目〜。単一行は「200」のみでも可</p>
+
+    <hr class="divider">
+
+    <label for="additional-exclude">追加除外（L列に含む文字列、1行1件）</label>
+    <textarea id="additional-exclude" rows="3" placeholder="毎週追加で除外したい文字列があれば入力（空欄でもOK）"></textarea>
+  </div>
+
+  <!-- Step 4: Run -->
+  <div class="card">
+    <div class="step-header">
+      <span class="step-badge">4</span>
+      計算・更新を実行
+    </div>
+
+    <button class="btn btn-primary btn-block" id="process-btn" disabled onclick="runProcess()">
+      ファイルを読み込んでください
+    </button>
+
+    <div id="result-area" class="hidden">
+      <div class="result-box">
+        <div class="result-title">✅ 処理完了</div>
+        <div class="result-row">
+          <span>パターン1（7〜13日）更新行数　ファイルA:</span>
+          <span class="result-count" id="count-7to13">-</span>
+        </div>
+        <div class="result-row">
+          <span>パターン2（14日以上）更新行数　ファイルB:</span>
+          <span class="result-count" id="count-14plus">-</span>
+        </div>
+        <div class="result-row total">
+          <span>合計更新行数:</span>
+          <span class="result-count" id="count-total">-</span>
+        </div>
+      </div>
+      <div class="dl-row">
+        <button class="btn btn-blue btn-block" id="dl-a" onclick="downloadFile('a')">
+          📥 ファイルA更新済みをDL<br><small id="dl-a-name" style="font-weight:normal;"></small>
+        </button>
+        <button class="btn btn-green btn-block" id="dl-b" onclick="downloadFile('b')">
+          📥 ファイルB更新済みをDL<br><small id="dl-b-name" style="font-weight:normal;"></small>
+        </button>
+      </div>
+    </div>
+    <div id="process-error" class="error-box hidden"></div>
+  </div>
+
+  <!-- Log history -->
+  <div class="card">
+    <div class="step-header toggle-header" onclick="toggleLog()">
+      <span class="step-badge" style="background:#4a5568;">🗒</span>
+      処理履歴
+      <span class="toggle-arrow" id="log-toggle">▼ 展開</span>
+    </div>
+    <div id="log-content" class="hidden">
+      <div id="log-empty" style="color:#aaa; font-size:13px; text-align:center; padding:12px 0;">
+        まだ処理履歴がありません
+      </div>
+      <div style="overflow-x:auto;">
+        <table id="log-table" class="logic-table hidden" style="min-width:600px;">
+          <thead>
+            <tr>
+              <th style="width:130px;">実行日時</th>
+              <th>ファイルA（1週間）</th>
+              <th>ファイルB（2週間）</th>
+              <th style="text-align:center;">P1更新</th>
+              <th style="text-align:center;">P2更新</th>
+              <th style="text-align:center;">合計</th>
+            </tr>
+          </thead>
+          <tbody id="log-body"></tbody>
+        </table>
+      </div>
+      <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+        <button class="btn" style="background:#e53e3e; color:#fff; padding:6px 14px; font-size:12px;" onclick="clearLog()">ログをクリア</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logic reference -->
+  <div class="card">
+    <div class="step-header toggle-header" onclick="toggleLogic()">
+      <span class="step-badge gray">?</span>
+      計算ロジック確認
+      <span class="toggle-arrow" id="logic-toggle">▼ 展開</span>
+    </div>
+    <div id="logic-content" class="hidden">
+      <p class="logic-subtitle">パターン1（7〜13日）— ACOS &gt; 0 の場合（ファイルA の統計を使用）</p>
+      <table class="logic-table">
+        <tr><th>ACOS</th><th>新しい入札額</th></tr>
+        <tr><td>0.26 未満</td><td>現在の入札額（変更なし）</td></tr>
+        <tr><td>0.26 〜 0.34</td><td>平均CPC − 2</td></tr>
+        <tr><td>0.35 〜 0.40</td><td>平均CPC − 5</td></tr>
+        <tr><td>0.41 〜 0.50</td><td>平均CPC − 7</td></tr>
+        <tr><td>0.51 以上</td><td>平均CPC ÷ 2</td></tr>
+      </table>
+      <p class="logic-subtitle">パターン1（7〜13日）— ACOS = 0 の場合（クリック数で判定）</p>
+      <table class="logic-table">
+        <tr><th>クリック数</th><th>新しい入札額</th></tr>
+        <tr><td>0</td><td>現在の入札額 + 3</td></tr>
+        <tr><td>1 〜 3</td><td>現在の入札額 + 2</td></tr>
+        <tr><td>4 〜 6</td><td>現在の入札額 + 1</td></tr>
+        <tr><td>7 〜 10</td><td>平均CPC − 3</td></tr>
+        <tr><td>11 以上</td><td>平均CPC − 5</td></tr>
+      </table>
+      <p class="logic-subtitle">パターン2（14日以上）— ACOS &gt; 0 の場合（ファイルB の統計を使用）</p>
+      <table class="logic-table">
+        <tr><th>ACOS</th><th>新しい入札額</th></tr>
+        <tr><td>0.21 未満</td><td>現在の入札額（変更なし）</td></tr>
+        <tr><td>0.21 〜 0.25</td><td>平均CPC − 1</td></tr>
+        <tr><td>0.26 〜 0.34</td><td>平均CPC − 2</td></tr>
+        <tr><td>0.35 〜 0.40</td><td>平均CPC − 5</td></tr>
+        <tr><td>0.41 〜 0.50</td><td>平均CPC − 7</td></tr>
+        <tr><td>0.51 以上</td><td>平均CPC ÷ 2</td></tr>
+      </table>
+      <p class="logic-subtitle">パターン2（14日以上）— ACOS = 0 の場合（クリック数で判定）</p>
+      <table class="logic-table">
+        <tr><th>クリック数</th><th>新しい入札額</th></tr>
+        <tr><td>0</td><td>現在の入札額 + 5</td></tr>
+        <tr><td>1 〜 2</td><td>現在の入札額 + 3</td></tr>
+        <tr><td>3 〜 5</td><td>現在の入札額 + 2</td></tr>
+        <tr><td>6 〜 8</td><td>現在の入札額 + 1</td></tr>
+        <tr><td>9 〜 13</td><td>平均CPC − 3</td></tr>
+        <tr><td>14 〜 20</td><td>平均CPC − 5</td></tr>
+        <tr><td>21 以上</td><td>平均CPC ÷ 2</td></tr>
+      </table>
+      <p style="font-size:12px; color:#888;">
+        ※ 結果は小数点以下切り捨て（ROUNDDOWN）、50以上は50に丸め<br>
+        ※ AB列（入札額）が空白の行はスキップ<br>
+        ※ 値が変わらない行には「更新」を記載しません
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const SHEET = 'スポンサープロダクト広告キャンペーン';
+const COLS = {
+  bid:      '入札額',
+  op:       '操作',
+  campaign: 'キャンペーン名（情報提供のみ）',
+  acos:     'ACOS',
+  cpc:      'CPC',
+  clicks:   'クリック数'
+};
+
+// State for each file
+const state = {
+  a: { bytes: null, arr: null, map: {}, outName: '' },
+  b: { bytes: null, arr: null, map: {}, outName: '' }
+};
+let processedWbA = null, processedWbB = null;
+
+// ── Drag & Drop setup ──
+function setupDrop(dropId, inputId, key) {
+  const dz = document.getElementById(dropId);
+  const fi = document.getElementById(inputId);
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) loadFile(key, e.dataTransfer.files[0]);
+  });
+  fi.addEventListener('change', e => { if (e.target.files[0]) loadFile(key, e.target.files[0]); });
+}
+setupDrop('drop-a', 'file-a', 'a');
+setupDrop('drop-b', 'file-b', 'b');
+
+// ── File load ──
+function loadFile(key, file) {
+  const s = state[key];
+  const pfx = 'i' + key + '-';
+  document.getElementById('info-' + key).classList.add('hidden');
+  document.getElementById('err-' + key).classList.add('hidden');
+  document.getElementById('result-area').classList.add('hidden');
+
+  s.outName = file.name.replace(/\.[^.]+$/, '') + '_更新済み.xlsx';
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      s.bytes = new Uint8Array(e.target.result);
+      const wb = XLSX.read(s.bytes, { type: 'array' });
+
+      if (!wb.SheetNames.includes(SHEET)) {
+        showErr(key, 'シート「' + SHEET + '」が見つかりません。\n含まれるシート: ' + wb.SheetNames.join(', '));
+        return;
+      }
+      const ws = wb.Sheets[SHEET];
+      s.arr = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+
+      if (s.arr.length < 2) { showErr(key, 'データが空です。'); return; }
+
+      s.map = {};
+      const hdr = s.arr[0];
+      for (let i = 0; i < hdr.length; i++) {
+        const h = String(hdr[i] || '').trim();
+        for (const [k, v] of Object.entries(COLS)) { if (h === v) s.map[k] = i; }
+      }
+      const miss = Object.keys(COLS).filter(k => s.map[k] === undefined);
+      if (miss.length) { showErr(key, '列が見つかりません:\n' + miss.map(k => '・' + COLS[k]).join('\n')); return; }
+
+      document.getElementById(pfx + 'name').textContent = file.name;
+      document.getElementById(pfx + 'rows').textContent = (s.arr.length - 1) + ' 行';
+      document.getElementById(pfx + 'acos').textContent = colLetter(s.map.acos) + '列';
+      document.getElementById(pfx + 'cpc').textContent = colLetter(s.map.cpc) + '列';
+      document.getElementById(pfx + 'clicks').textContent = colLetter(s.map.clicks) + '列';
+      document.getElementById(pfx + 'bid').textContent = colLetter(s.map.bid) + '列';
+      document.getElementById('info-' + key).classList.remove('hidden');
+
+      updateRunButton();
+    } catch (err) { showErr(key, '読み込みエラー: ' + err.message); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function showErr(key, msg) {
+  const el = document.getElementById('err-' + key);
+  el.textContent = msg; el.classList.remove('hidden');
+  state[key].bytes = null; state[key].arr = null;
+  updateRunButton();
+}
+
+function updateRunButton() {
+  const targets = parseLines(document.getElementById('targets7to13').value);
+  const hasA = !!state.a.bytes;
+  const hasB = !!state.b.bytes;
+  const btn = document.getElementById('process-btn');
+
+  // Need file B always; file A only if pattern 1 targets are entered
+  const needA = targets.length > 0;
+  const ready = hasB && (!needA || hasA);
+
+  btn.disabled = !ready;
+  if (!hasB) {
+    btn.textContent = 'ファイルBを読み込んでください';
+  } else if (needA && !hasA) {
+    btn.textContent = 'パターン1対象商品を入力したのでファイルAも読み込んでください';
+  } else {
+    btn.textContent = '計算・更新を実行する';
+  }
+}
+
+// Re-check readiness when targets change
+document.getElementById('targets7to13').addEventListener('input', updateRunButton);
+
+// ── Process ──
+function runProcess() {
+  document.getElementById('process-error').classList.add('hidden');
+  document.getElementById('result-area').classList.add('hidden');
+  processedWbA = null; processedWbB = null;
+
+  try {
+    const targets  = parseLines(document.getElementById('targets7to13').value);
+    const fixedExcl = parseLines(document.getElementById('fixed-exclude').value);
+    const addExcl   = parseLines(document.getElementById('additional-exclude').value);
+    const ranges    = parseRanges(document.getElementById('exclude-ranges').value);
+    const excl14    = [...fixedExcl, ...targets, ...addExcl];
+
+    let cnt7 = 0, cnt14 = 0;
+
+    // ── Pattern 1: process File A ──
+    if (targets.length > 0 && state.a.bytes) {
+      processedWbA = XLSX.read(state.a.bytes, { type: 'array' });
+      const ws = processedWbA.Sheets[SHEET];
+      const m = state.a.map;
+
+      for (let ri = 1; ri < state.a.arr.length; ri++) {
+        const row = state.a.arr[ri];
+        const bid = row[m.bid];
+        if (bid === null || bid === undefined || bid === '') continue;
+        const bidNum = parseFloat(bid);
+        if (isNaN(bidNum)) continue;
+
+        const camp = String(row[m.campaign] || '');
+        if (!targets.includes(camp)) continue;
+
+        const acos   = toNum(row[m.acos]);
+        const cpc    = toNum(row[m.cpc]) ?? 0;
+        const clicks = toNum(row[m.clicks]) ?? 0;
+
+        const nb = calc7(bidNum, acos, cpc, clicks);
+        if (nb !== null && nb !== bidNum) {
+          setCell(ws, ri, m.bid, nb, 'n');
+          setCell(ws, ri, m.op, '更新', 's');
+          cnt7++;
+        }
+      }
+    }
+
+    // ── Pattern 2: process File B ──
+    if (state.b.bytes) {
+      processedWbB = XLSX.read(state.b.bytes, { type: 'array' });
+      const ws = processedWbB.Sheets[SHEET];
+      const m = state.b.map;
+
+      for (let ri = 1; ri < state.b.arr.length; ri++) {
+        const row = state.b.arr[ri];
+        const excelRow = ri + 1;
+        const bid = row[m.bid];
+        if (bid === null || bid === undefined || bid === '') continue;
+        const bidNum = parseFloat(bid);
+        if (isNaN(bidNum)) continue;
+
+        const camp = String(row[m.campaign] || '');
+        if (excl14.some(s => s && camp.includes(s))) continue;
+        if (ranges.some(r => excelRow >= r.s && excelRow <= r.e)) continue;
+
+        const acos   = toNum(row[m.acos]);
+        const cpc    = toNum(row[m.cpc]) ?? 0;
+        const clicks = toNum(row[m.clicks]) ?? 0;
+
+        const nb = calc14(bidNum, acos, cpc, clicks);
+        if (nb !== null && nb !== bidNum) {
+          setCell(ws, ri, m.bid, nb, 'n');
+          setCell(ws, ri, m.op, '更新', 's');
+          cnt14++;
+        }
+      }
+    }
+
+    document.getElementById('count-7to13').textContent = cnt7 + ' 行';
+    document.getElementById('count-14plus').textContent = cnt14 + ' 行';
+    document.getElementById('count-total').textContent = (cnt7 + cnt14) + ' 行';
+
+    // Save to log
+    saveLog({
+      date: new Date().toLocaleString('ja-JP', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }),
+      fileA: state.a.bytes ? (state.a.outName.replace('_更新済み.xlsx', '.xlsx')) : '−',
+      fileB: state.b.bytes ? (state.b.outName.replace('_更新済み.xlsx', '.xlsx')) : '−',
+      cnt7,
+      cnt14
+    });
+
+    const dlA = document.getElementById('dl-a');
+    const dlB = document.getElementById('dl-b');
+    dlA.disabled = !processedWbA;
+    dlB.disabled = !processedWbB;
+    document.getElementById('dl-a-name').textContent = state.a.outName || '';
+    document.getElementById('dl-b-name').textContent = state.b.outName || '';
+
+    document.getElementById('result-area').classList.remove('hidden');
+  } catch (err) {
+    const el = document.getElementById('process-error');
+    el.textContent = '処理エラー: ' + err.message;
+    el.classList.remove('hidden');
+  }
+}
+
+// ── Download ──
+function downloadFile(key) {
+  const wb = key === 'a' ? processedWbA : processedWbB;
+  const name = state[key].outName;
+  if (!wb || !name) return;
+  const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ── Calculation ──
+function calc7(bid, acos, cpc, clicks) {
+  let v;
+  if (acos !== null && !isNaN(acos) && acos > 0) {
+    if (acos < 0.26)      v = bid;
+    else if (acos < 0.35) v = cpc - 2;
+    else if (acos < 0.41) v = cpc - 5;
+    else if (acos < 0.51) v = cpc - 7;
+    else                  v = cpc / 2;
+  } else {
+    const c = clicks ?? 0;
+    if (c === 0)      v = bid + 3;
+    else if (c <= 3)  v = bid + 2;
+    else if (c <= 6)  v = bid + 1;
+    else if (c <= 10) v = cpc - 3;
+    else              v = cpc - 5;
+  }
+  return isNaN(v) ? null : Math.floor(Math.min(v, 50));
+}
+
+function calc14(bid, acos, cpc, clicks) {
+  let v;
+  if (acos !== null && !isNaN(acos) && acos > 0) {
+    if (acos < 0.21)      v = bid;
+    else if (acos < 0.26) v = cpc - 1;
+    else if (acos < 0.35) v = cpc - 2;
+    else if (acos < 0.41) v = cpc - 5;
+    else if (acos < 0.51) v = cpc - 7;
+    else                  v = cpc / 2;
+  } else {
+    const c = clicks ?? 0;
+    if (c === 0)       v = bid + 5;
+    else if (c <= 2)   v = bid + 3;
+    else if (c <= 5)   v = bid + 2;
+    else if (c <= 8)   v = bid + 1;
+    else if (c <= 13)  v = cpc - 3;
+    else if (c <= 20)  v = cpc - 5;
+    else               v = cpc / 2;
+  }
+  return isNaN(v) ? null : Math.floor(Math.min(v, 50));
+}
+
+// ── Helpers ──
+function setCell(ws, ri, ci, val, t) {
+  const addr = XLSX.utils.encode_cell({ r: ri, c: ci });
+  if (ws[addr]) { ws[addr].v = val; ws[addr].t = t; delete ws[addr].w; }
+  else ws[addr] = { v: val, t: t };
+}
+
+function toNum(v) {
+  if (v === null || v === undefined) return null;
+  if (typeof v === 'number') return v;
+  const n = parseFloat(v);
+  return isNaN(n) ? null : n;
+}
+
+function parseLines(text) {
+  return text.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+}
+
+function parseRanges(text) {
+  if (!text.trim()) return [];
+  return text.replace(/\n/g, ',').split(',').map(p => {
+    const m = p.trim().match(/^(\d+)(?:\s*[-〜~]\s*(\d+))?$/);
+    if (!m) return null;
+    return { s: parseInt(m[1]), e: m[2] ? parseInt(m[2]) : parseInt(m[1]) };
+  }).filter(Boolean);
+}
+
+function colLetter(idx) {
+  let s = '', n = idx + 1;
+  while (n > 0) { const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26); }
+  return s;
+}
+
+function toggleLogic() {
+  const c = document.getElementById('logic-content');
+  const t = document.getElementById('logic-toggle');
+  t.textContent = c.classList.toggle('hidden') ? '▼ 展開' : '▲ 閉じる';
+}
+
+// ── Log ──
+const LOG_KEY = 'amazon_cpc_log';
+
+function getLogs() {
+  try { return JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); }
+  catch { return []; }
+}
+
+function saveLog(entry) {
+  const logs = getLogs();
+  logs.unshift(entry);
+  localStorage.setItem(LOG_KEY, JSON.stringify(logs.slice(0, 100)));
+  renderLog();
+}
+
+function renderLog() {
+  const logs = getLogs();
+  const empty = document.getElementById('log-empty');
+  const table = document.getElementById('log-table');
+  const tbody = document.getElementById('log-body');
+  if (logs.length === 0) {
+    empty.classList.remove('hidden');
+    table.classList.add('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+  table.classList.remove('hidden');
+  tbody.innerHTML = logs.map(l => `
+    <tr>
+      <td style="white-space:nowrap; font-size:12px;">${l.date}</td>
+      <td style="font-size:12px; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${l.fileA || '−'}">${l.fileA || '−'}</td>
+      <td style="font-size:12px; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${l.fileB || '−'}">${l.fileB || '−'}</td>
+      <td style="text-align:center; font-weight:bold;">${l.cnt7}</td>
+      <td style="text-align:center; font-weight:bold;">${l.cnt14}</td>
+      <td style="text-align:center; font-weight:bold; color:#276749;">${l.cnt7 + l.cnt14}</td>
+    </tr>`).join('');
+}
+
+function clearLog() {
+  if (!confirm('処理履歴をすべて削除しますか？')) return;
+  localStorage.removeItem(LOG_KEY);
+  renderLog();
+}
+
+function toggleLog() {
+  const c = document.getElementById('log-content');
+  const t = document.getElementById('log-toggle');
+  if (c.classList.toggle('hidden')) {
+    t.textContent = '▼ 展開';
+  } else {
+    t.textContent = '▲ 閉じる';
+    renderLog();
+  }
+}
+
+// Render log on page load
+renderLog();
+</script>
+</body>
+</html>
