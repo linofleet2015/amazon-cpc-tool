@@ -259,15 +259,16 @@ input[type="text"]:focus { outline: none; border-color: #1a3a5c; }
 
     <label for="fixed-exclude">固定除外リスト（L列に含む文字列、1行1件、部分一致）</label>
     <textarea id="fixed-exclude" rows="12">nursePouch
-A_B0GZ2RX85Y_汗取りシート襟
-A_B0GZ2MJ8MN_名刺ホルダー300枚
-A_B0GZ2ZRHT2_ラッピングペーパー
-A_B0GZ7VJY24_脇汗パッド
-A_B0H174L4VW_ヘアアクセサリー
-A_B0H17DPRYP_ステンレスクリップ
-A_B0H17MDG1Z_ゴム手袋
-A_B0H17MD8K1_壁紙シール
-A_B0H1M74CQB_ジムバッグ洗える</textarea>
+A_B0GH2DQJY9_サングラスホルダー
+A_B0GF7RDGJ9_バスケットボールマット
+A_B0GL8G95K8_化粧ポーチ
+A_B0GP63TKC7_アームカバー作業用
+A_B0GQ9GGFCK_携帯トイレ
+A_B0GQXQNQ3R_カールコード
+A_B0GRVMVJ2Q_シートバックポケット
+A_B0GX9G3GF5_丸形カラビナ
+A_B0H2DFF8TX_育苗ポット
+A_B0GX9LJ94M_滑り止めテープ</textarea>
     <p class="note">※ 編集・追加可能です。L列の値にこの文字列が含まれていれば除外（部分一致）</p>
 
     <hr class="divider">
@@ -401,7 +402,7 @@ A_B0H1M74CQB_ジムバッグ洗える</textarea>
         <tr><td>21 以上</td><td>平均CPC ÷ 2</td></tr>
       </table>
       <p style="font-size:12px; color:#888;">
-        ※ 結果は小数点以下切り捨て（ROUNDDOWN）、50以上は50に丸め<br>
+        ※ 結果は小数点以下切り捨て（ROUNDDOWN）<br>
         ※ AB列（入札額）が空白の行はスキップ<br>
         ※ 値が変わらない行には「更新」を記載しません
       </p>
@@ -654,7 +655,7 @@ function calc7(bid, acos, cpc, clicks) {
     else if (c <= 10) v = cpc - 3;
     else              v = cpc - 5;
   }
-  return isNaN(v) ? null : Math.floor(Math.min(v, 50));
+  return isNaN(v) ? null : Math.floor(v);
 }
 
 function calc14(bid, acos, cpc, clicks) {
@@ -676,7 +677,7 @@ function calc14(bid, acos, cpc, clicks) {
     else if (c <= 20)  v = cpc - 5;
     else               v = cpc / 2;
   }
-  return isNaN(v) ? null : Math.floor(Math.min(v, 50));
+  return isNaN(v) ? null : Math.floor(v);
 }
 
 // ── Helpers ──
